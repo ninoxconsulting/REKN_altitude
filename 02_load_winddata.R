@@ -2,11 +2,40 @@
 # 5) Get wind data 
 
 # https://www.remss.com/measurements/ccmp/
+
+#data.remss.com/ccmp/v03.1/Y2021/M05/
+url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
+
+
+library(RCurl) 
+#url <- "ftp://ftppath/www_logs/testfolder/test.csv"
+text_data <- getURL(url, userpwd = "gperkins@ninoxconsulting.ca:gperkins@ninoxconsulting.ca", connecttimeout = 60)
+df <- read.csv(text = text_data)
+
 ## registerd fro Ftp data downloas 27th Jan 2025. 
 #https://podaac.jpl.nasa.gov/dataset/CCMP_WINDS_10M6HR_L4_V3.1#
 
 
+"ftp.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
+
+
 # looks like downloadable data in .nc file format. ? needs some digging to link wind downloads. 
+url = "ftp://username:password@ftppath/www_logs/testfolder/test.csv"
+download.file(url, destfile = "test.nc", mode = "wb")
+
+
+
+"ftp.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
+
+url = "ftp://cdaweb.gsfc.nasa.gov/"
+
+
+url = "ftp://ftp.remss.com/ccmp"
+url = "http://ftp.remss.com/"
+
+result <- getURL(url, ftp.use.epsv=FALSE, dirlistonly = TRUE)
+
+
 
 
 library(terra)
