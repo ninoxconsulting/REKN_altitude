@@ -9,7 +9,7 @@ url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_
 
 library(RCurl) 
 #url <- "ftp://ftppath/www_logs/testfolder/test.csv"
-text_data <- getURL(url, userpwd = "gperkins@ninoxconsulting.ca:gperkins@ninoxconsulting.ca", connecttimeout = 60)
+text_data <- getURL(url, userpwd = username:password, connecttimeout = 60)
 df <- read.csv(text = text_data)
 
 ## registerd fro Ftp data downloas 27th Jan 2025. 
