@@ -1,10 +1,31 @@
-
+library(RCurl) 
 # 5) Get wind data 
 
 # https://www.remss.com/measurements/ccmp/
 
 #data.remss.com/ccmp/v03.1/Y2021/M05/
 url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
+
+url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210501_V03.1_L4.nc"
+
+download.file(url, basename(url))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 library(RCurl) 
@@ -27,7 +48,8 @@ download.file(url, destfile = "test.nc", mode = "wb")
 
 "ftp.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
 
-url = "ftp://cdaweb.gsfc.nasa.gov/"
+url = "ftp://c
+daweb.gsfc.nasa.gov/"
 
 
 url = "ftp://ftp.remss.com/ccmp"
