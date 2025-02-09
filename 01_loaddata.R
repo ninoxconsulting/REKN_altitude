@@ -5,7 +5,7 @@ library(fs)
 library(dplyr)
 library(readr)
 library(sf)
-
+library(terra) #testing line
 
 # 1) read in csv from 01_inputs folder
 
