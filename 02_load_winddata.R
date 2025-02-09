@@ -2,6 +2,7 @@
 library(RCurl) 
 library(terra)
 library(fs)
+library(terra)
 
 # 5) Get wind data 
 
