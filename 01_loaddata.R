@@ -6,6 +6,7 @@ library(dplyr)
 library(readr)
 library(sf)
 library(terra) #testing line
+library(lidR) # cam test
 
 # 1) read in csv from 01_inputs folder
 
