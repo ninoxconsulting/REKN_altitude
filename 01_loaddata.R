@@ -8,6 +8,7 @@ library(readr)
 library(sf)
 library(terra)
 library(geosphere)
+library(lubridate)
 
 ## DATA PRE-PROCESSING ##
 # Read CSV Data
@@ -19,6 +20,7 @@ birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, rem
 # Filter Out Bad Data and Sort by Date Ascending
 birds_sf <- birds_sf %>% filter(CRC != 'Fail')
 
+# Combine the Date and Time fields into a single DateTime field
 birds_sf <- birds_sf |> 
     dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
 
@@ -27,7 +29,6 @@ birds_sf <- birds_sf %>% arrange(datetime)
 birds_sf <- birds_sf |> 
    mutate(location.long_prior = lag(Longitude, 1L),
           location.lat_prior = lag(Latitude, 1L))
-
 
 # Calculate Distance Between Sequential Ping Locations
 birds_dist <- st_distance(birds_sf) # Creates a distance matrix for every point's distance to every other point in the dataset (in metres)
@@ -47,8 +48,6 @@ dist_km <- dist_seq / 1000 # converts the distances from metres to kilometres
 
 birds_sf$dist_km <- dist_km # add the distance column to the table
 
-
-
 # 2) calculate the time between ping locations
 
 birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$datetime), units = "hours"))
@@ -60,46 +59,22 @@ birds_sf<- birds_sf|>
    dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
                  speed_kmh = round((dist_km /timediff_hrs),1))
 
-timediff_hrs <- c()
+# 4) Calculate Geoid Height from Ellipsoid Height
 
-for(i in 1:nrow(birds_sf)) {
-  if(i == 1){
-    timediff_hrs[i] <- 0
-  }
-  else{
-    d <- as.numeric(difftime(birds_sf[i,]$Date, birds_sf[i-1,]$Date, units = "hours")) # time difference for date fields
-    t <- as.numeric(difftime(birds_sf[i,]$Time, birds_sf[i-1,]$Time, units = "hours")) # time difference for time fields (need to account for if dates are not equal)
-    if(t < 0){
-      timediff_hrs[i] <- d + (24 + t) # adjusts time difference where dates differ and i time is a lower value than i-1 time
-    }
-    else{
-      timediff_hrs[i] <- d + t # add the total time difference for date and time fields
-    }
-  }
-}
+EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravitational Geoid Model 2008 1'
 
-birds_sf$timediff_hrs <- timediff_hrs
+geoid_height <- extract(EGM2008_1, vect(birds_sf)) # tested these calculated geoid values against the geoid height calculator and the values matched
+geoid_height <- geoid_height$geoid_undulation # the extract function creates a data frame so this function just gets the geoid values as a vector
 
-# Calculate Speed of Travel from Distance and Time
-speed_kmh <- c()
+birds_sf$geoid_height <- geoid_height
 
-for(i in 1:nrow(birds_sf)){
-  if(i == 1){
-    speed_kmh[i] <- 0
-  }
-  else{
-    speed_kmh[i] <- birds_sf[i,]$dist_km / birds_sf[i,]$timediff_hrs
-  }
-}
+birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formula for geoid height to calculate orthometric height
+# abs() function is to convert the geoid heights to positive values
 
-birds_sf$speed_kmh <- speed_kmh
-  
+# formula for geoid height: N = h - H
+# N: geoid height; h: ellipsoid height; H: orthometric height
 
-# 3) calculate the flight distance and speed. 
 
-#https://github.com/ninoxconsulting/REKN_gps/blob/main/02_combine_all_datasets.R
-
-# 
 # ############################################################################
 # ## Calculate distance between points and bearing
 # 
