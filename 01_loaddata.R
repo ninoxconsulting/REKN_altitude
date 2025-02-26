@@ -18,7 +18,15 @@ birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, rem
 # Filter Out Bad Data and Sort by Date Ascending
 birds_sf <- birds_sf %>% filter(CRC != 'Fail')
 
-birds_sf <- birds_sf %>% arrange(Date)
+birds_sf <- birds_sf |> 
+    dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
+
+birds_sf <- birds_sf %>% arrange(datetime)
+
+birds_sf <- birds_sf |> 
+   mutate(location.long_prior = lag(Longitude, 1L),
+          location.lat_prior = lag(Latitude, 1L))
+
 
 # Calculate Distance Between Sequential Ping Locations
 birds_dist <- st_distance(birds_sf) # Creates a distance matrix for every point's distance to every other point in the dataset (in metres)
