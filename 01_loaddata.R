@@ -7,6 +7,7 @@ library(dplyr)
 library(readr)
 library(sf)
 library(terra)
+library(geosphere)
 
 ## DATA PRE-PROCESSING ##
 # Read CSV Data
