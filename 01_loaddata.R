@@ -13,7 +13,7 @@ library(terra)
 birds <- read_csv(path("01_inputs", "DS 2 _P7165_Con_213835_250122134729.csv"),name_repair = "unique",locale=locale(encoding="latin1"))
 
 # Convert to SF Object
-birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326)
+birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, remove = FALSE)
 
 # Filter Out Bad Data and Sort by Date Ascending
 birds_sf <- birds_sf %>% filter(CRC != 'Fail')
