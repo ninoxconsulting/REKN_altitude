@@ -60,32 +60,6 @@ birds_sf<- birds_sf|>
    dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
                  speed_kmh = round((dist_km /timediff_hrs),1))
 
-# 3) calculate the flight distance and speed. 
-
-#https://github.com/ninoxconsulting/REKN_gps/blob/main/02_combine_all_datasets.R
-
-# 
-# ############################################################################
-# ## Calculate distance between points and bearing
-# 
-# bdd_det <- out  |> 
-#   #filter(tag.id == 230318) |> 
-#   group_by(tag.id) |> 
-#   mutate(location.long_prior = lag(location.long, 1L),
-#          location.lat_prior = lag(location.lat, 1L))
-# 
-# bdd_det <- bdd_det |> 
-#   rowwise() %>%
-#   dplyr::mutate(gcd_m = distHaversine(c(location.long_prior,location.lat_prior), c(location.long, location.lat)),
-#                 bearing = bearing(c(location.long_prior,location.lat_prior), c(location.long, location.lat)),
-#                 speed_mhr = round((gcd_m/diff)/1000,1))%>% 
-#   ungroup()
-# 
-# 
-# #length(unique(bdd_det$tag.id))
-
-
-## see note see code in other repo for this usign GCD 
 
 
 
