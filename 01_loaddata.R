@@ -47,7 +47,18 @@ dist_km <- dist_seq / 1000 # converts the distances from metres to kilometres
 birds_sf$dist_km <- dist_km # add the distance column to the table
 
 
-# WORK IN PROGRESS - Calculate Time Between Ping Locations (Dates are DD/MM/YYYY)
+
+# 2) calculate the time between ping locations
+
+birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$datetime), units = "hours"))
+
+# 3) calculate the bearing and speed of travel
+
+birds_sf<- birds_sf|> 
+   rowwise() |> 
+   dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
+                 speed_kmh = round((dist_km /timediff_hrs),1))
+
 timediff_hrs <- c()
 
 for(i in 1:nrow(birds_sf)) {
