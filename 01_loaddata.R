@@ -60,41 +60,6 @@ birds_sf<- birds_sf|>
    dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
                  speed_kmh = round((dist_km /timediff_hrs),1))
 
-timediff_hrs <- c()
-
-for(i in 1:nrow(birds_sf)) {
-  if(i == 1){
-    timediff_hrs[i] <- 0
-  }
-  else{
-    d <- as.numeric(difftime(birds_sf[i,]$Date, birds_sf[i-1,]$Date, units = "hours")) # time difference for date fields
-    t <- as.numeric(difftime(birds_sf[i,]$Time, birds_sf[i-1,]$Time, units = "hours")) # time difference for time fields (need to account for if dates are not equal)
-    if(t < 0){
-      timediff_hrs[i] <- d + (24 + t) # adjusts time difference where dates differ and i time is a lower value than i-1 time
-    }
-    else{
-      timediff_hrs[i] <- d + t # add the total time difference for date and time fields
-    }
-  }
-}
-
-birds_sf$timediff_hrs <- timediff_hrs
-
-# Calculate Speed of Travel from Distance and Time
-speed_kmh <- c()
-
-for(i in 1:nrow(birds_sf)){
-  if(i == 1){
-    speed_kmh[i] <- 0
-  }
-  else{
-    speed_kmh[i] <- birds_sf[i,]$dist_km / birds_sf[i,]$timediff_hrs
-  }
-}
-
-birds_sf$speed_kmh <- speed_kmh
-  
-
 # 3) calculate the flight distance and speed. 
 
 #https://github.com/ninoxconsulting/REKN_gps/blob/main/02_combine_all_datasets.R
