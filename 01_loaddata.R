@@ -20,15 +20,15 @@ birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, rem
 # Filter Out Bad Data and Sort by Date Ascending
 birds_sf <- birds_sf %>% filter(CRC != 'Fail')
 
-# Combine the Date and Time fields into a single DateTime field
 birds_sf <- birds_sf |> 
-    dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
+  dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
 
 birds_sf <- birds_sf %>% arrange(datetime)
 
 birds_sf <- birds_sf |> 
-   mutate(location.long_prior = lag(Longitude, 1L),
-          location.lat_prior = lag(Latitude, 1L))
+  mutate(location.long_prior = lag(Longitude, 1L),
+         location.lat_prior = lag(Latitude, 1L))
+
 
 # Calculate Distance Between Sequential Ping Locations
 birds_dist <- st_distance(birds_sf) # Creates a distance matrix for every point's distance to every other point in the dataset (in metres)
@@ -48,6 +48,8 @@ dist_km <- dist_seq / 1000 # converts the distances from metres to kilometres
 
 birds_sf$dist_km <- dist_km # add the distance column to the table
 
+
+
 # 2) calculate the time between ping locations
 
 birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$datetime), units = "hours"))
@@ -55,9 +57,9 @@ birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$dat
 # 3) calculate the bearing and speed of travel
 
 birds_sf<- birds_sf|> 
-   rowwise() |> 
-   dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
-                 speed_kmh = round((dist_km /timediff_hrs),1))
+  rowwise() |> 
+  dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
+                speed_kmh = round((dist_km /timediff_hrs),1))
 
 # 4) Calculate Geoid Height from Ellipsoid Height
 
@@ -73,43 +75,6 @@ birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formul
 
 # formula for geoid height: N = h - H
 # N: geoid height; h: ellipsoid height; H: orthometric height
-
-
-# ############################################################################
-# ## Calculate distance between points and bearing
-# 
-# bdd_det <- out  |> 
-#   #filter(tag.id == 230318) |> 
-#   group_by(tag.id) |> 
-#   mutate(location.long_prior = lag(location.long, 1L),
-#          location.lat_prior = lag(location.lat, 1L))
-# 
-# bdd_det <- bdd_det |> 
-#   rowwise() %>%
-#   dplyr::mutate(gcd_m = distHaversine(c(location.long_prior,location.lat_prior), c(location.long, location.lat)),
-#                 bearing = bearing(c(location.long_prior,location.lat_prior), c(location.long, location.lat)),
-#                 speed_mhr = round((gcd_m/diff)/1000,1))%>% 
-#   ungroup()
-# 
-# 
-# #length(unique(bdd_det$tag.id))
-
-
-## see note see code in other repo for this usign GCD 
-
-
-
-
-# 4) convert the ellipsoid height 
-
-#“Geoid Height Calculator” from the NSF GAGE Facility. 
-# https://observablehq.com/@earthscope/geoid-height-calculator/2
-
-
-
-
-
-# extract first and last date for the bird to get wind data first date and last date?
 
 
 
