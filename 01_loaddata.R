@@ -61,8 +61,6 @@ birds_sf<- birds_sf|>
   dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
                 speed_kmh = round((dist_km /timediff_hrs),1))
 
-# 4) Calculate Geoid Height from Ellipsoid Height
-
 EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravitational Geoid Model 2008 1'
 
 geoid_height <- extract(EGM2008_1, vect(birds_sf)) # tested these calculated geoid values against the geoid height calculator and the values matched
