@@ -65,10 +65,13 @@ birds_sf<- birds_sf|>
 
 EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravitational Geoid Model 2008 1'
 
-geoid_height <- extract(EGM2008_1, vect(birds_sf)) # tested these calculated geoid values against the geoid height calculator and the values matched
+birds_vect <- vect(birds_sf) # converting the birds dataset to a SpatVector
+birds_vect <- project(birds_vect, "EPSG:4979") # reprojecting birds dataset to the same CRS as the geoid model
+
+geoid_height <- extract(EGM2008_1, birds_vect) # tested these calculated geoid values against the geoid height calculator and the values matched
 geoid_height <- geoid_height$geoid_undulation # the extract function creates a data frame so this function just gets the geoid values as a vector
 
-birds_sf$geoid_height <- geoid_height
+birds_sf$geoid_height <- geoid_height # adding the geoid height field to the original birds_sf variable
 
 birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formula for geoid height to calculate orthometric height
 # abs() function is to convert the geoid heights to positive values
