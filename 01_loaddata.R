@@ -8,6 +8,7 @@ library(readr)
 library(sf)
 library(terra)
 library(geosphere)
+library(lubridate)
 
 ## DATA PRE-PROCESSING ##
 # Read CSV Data
@@ -20,13 +21,13 @@ birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, rem
 birds_sf <- birds_sf %>% filter(CRC != 'Fail')
 
 birds_sf <- birds_sf |> 
-    dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
+  dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
 
 birds_sf <- birds_sf %>% arrange(datetime)
 
 birds_sf <- birds_sf |> 
-   mutate(location.long_prior = lag(Longitude, 1L),
-          location.lat_prior = lag(Latitude, 1L))
+  mutate(location.long_prior = lag(Longitude, 1L),
+         location.lat_prior = lag(Latitude, 1L))
 
 
 # Calculate Distance Between Sequential Ping Locations
@@ -56,24 +57,24 @@ birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$dat
 # 3) calculate the bearing and speed of travel
 
 birds_sf<- birds_sf|> 
-   rowwise() |> 
-   dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
-                 speed_kmh = round((dist_km /timediff_hrs),1))
+  rowwise() |> 
+  dplyr::mutate(bearing = bearing(c(location.long_prior,location.lat_prior), c(Longitude, Latitude)),
+                speed_kmh = round((dist_km /timediff_hrs),1))
 
+# 4) Calculate and Convert Geoid Heights
 
+EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravitational Geoid Model 2008 1'
 
+geoid_height <- extract(EGM2008_1, vect(birds_sf)) # tested these calculated geoid values against the geoid height calculator and the values matched
+geoid_height <- geoid_height$geoid_undulation # the extract function creates a data frame so this function just gets the geoid values as a vector
 
+birds_sf$geoid_height <- geoid_height
 
-# 4) convert the ellipsoid height 
+birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formula for geoid height to calculate orthometric height
+# abs() function is to convert the geoid heights to positive values
 
-#“Geoid Height Calculator” from the NSF GAGE Facility. 
-# https://observablehq.com/@earthscope/geoid-height-calculator/2
-
-
-
-
-
-# extract first and last date for the bird to get wind data first date and last date?
+# formula for geoid height: N = h - H
+# N: geoid height; h: ellipsoid height; H: orthometric height
 
 
 
