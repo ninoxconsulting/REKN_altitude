@@ -6,38 +6,108 @@ library(terra)
 
 # 5) Get wind data 
 
+# Wind direction can be directly accessed from the website hosted by CCMP 
+#  Mears, C.; Lee, T.; Ricciardulli, L.; Wang, X.; Wentz, F., 2022: RSS Cross-
+#  Calibrated Multi-Platform (CCMP) 6-hourly ocean vector wind analysis on 0.25
+#  deg grid, Version 3.0, Remote Sensing Systems, Santa Rosa, CA. Available at
+#  www.remss.com https://doi.org/10.56236/RSS-uv6h30
+
+
 # https://www.remss.com/measurements/ccmp/
 
-#data.remss.com/ccmp/v03.1/Y2021/M05/
 
-# methods to download the wind files direct from web. 
+# set up to read prepared file in 
+list.files(path("02_outputs"))
+bird <- st_read(path("02_outputs", "birds_raw.gpkg"))
 
-url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210529_V03.1_L4.nc"
+# note TIME has been dropped. but not a huge problem aas we have the date_time stamp. 
 
-url <- "https://data.remss.com/ccmp/v03.1/Y2021/M05/CCMP_Wind_Analysis_20210501_V03.1_L4.nc"
+# format back date in format to filter the data.
+# ie date will be converted to ymd and time will be grouped into one of 4 categories 
+#  (based on the closest time to one of 6 hours blocks ; each day has a 0, 6, 12, and 18) 
+bird$date_file <-  as.character(unique(ymd_hms(bird$datetime)))
+bird$date_file <- gsub("-", "", bird$date_file)
+bird$date_file <- sub(" .*", "",  bird$date_file)
 
-download.file(url, basename(url))
+# select which time set to pull from 
+
+library(tidyverse)
+library(lubridate)
+library(purrr)
+
+get_time <- function(time) {
+  time %>%
+    stringr::str_split(" ") %>%
+    purrr::map_chr(2) %>%
+    lubridate::hms()
+}
+
+bird$timeclass_file <- get_time(bird$datetime)
+
+difftime(bird$timeclass_file[1] , "01H 00M 00S", units = "mins"))
+
+difftime(hms("17H 29M 52S"), hms("01H 01M 01S"), units = "mins")
+
+#i <- interval(ymd("2017-01-01"), d)               ## 2017-01-01 UTC--2017-11-28 UTC j <- d %--% ymd("2017-12-31")                      ## 2017-11-28 UTC--2017-12-31 UTC
+#dt <- ymd_hms("2021-05-24 17:29:52")
+#v <-c(dt, dt + 100, dt + 1000); int_diff(v) 
 
 
 
 
-#https://data.remss.com/ccmp/
-#use version 3.1 = up to 2024 dataset 
+# need to pull the timestamp closest to the actual timestamp 
 
-#https://podaac.jpl.nasa.gov/MEaSUREs-CCMP
-# https://www.remss.com/measurements/ccmp/
 
-# dealing with netcdf files 
-#https://www.youtube.com/watch?v=Xer1XBm3sns
 
-#install.packages("RNetCDF")
+
+
+# get a list of the unique dates in the dataset. 
+unique_dates <- unique(bird$date_file)
+
+# convert the unique dates into filenames to download 
+if (!dir.exists(path("00_downloads"))){
+  dir.create(path("00_downloads"))
+}
+
+
+# this steps through the list of unique dates and downloads the corresponding files for each unique date.
+
+purrr::map(unique_dates, function(i){
+  
+  i <- unique_dates[1]
+  
+  fyear <- substr(i, 1, 4)
+  fmonth <- substr(i, 5, 6)
+  
+  fname <- paste0("CCMP_Wind_Analysis_", i, "_V03.1_L4.nc")
+  
+  # check if file already exists
+  if(file.exists(fs::path("00_downloads", fname))){
+    cli::cli_alert("File already exists")
+
+      } else {
+  
+  url <- paste0("https://data.remss.com/ccmp/v03.1/Y", fyear, "/M", fmonth, "/", fname)
+  download.file(url, destfile = fs::path("00_downloads", basename(url)),mode = "wb")
+      }
+  
+})
+
+
+
+
 
 # how to read in a file. 
 
-nc_dir <- path("01_inputs", "wind_raw", "CCMP_Wind_Analysis_20210525_V03.1_L4.nc")
+nc_dir <- fs::path("00_downloads", "CCMP_Wind_Analysis_20210524_V03.1_L4.nc")
+library(terra)
 
-aa <- rast(nc_dir)
+aa <- rast(nc_dir) 
 
+# this reads in as a stacked rast with 16 layers. 
+# u – Zonal Wind (west-east) (m/s)
+# v – Meridional Wind (north-south) (m/s)
+# Positive v wind is blowing from the south, Positive u wind is blowing from the west
 
 
 # stack to covariates 
@@ -46,8 +116,6 @@ aa <- rast(nc_dir)
 #[12] "ws_4"   "nobs_1" "nobs_2" "nobs_3" "nobs_4"
 
 # at each time count, 0 , 6, 12, 18 hours.
-
-
 
 
 # projec to WGS84? 
