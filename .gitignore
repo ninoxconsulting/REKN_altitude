@@ -4,3 +4,5 @@
 .Ruserdata
 *.nc
 01_inputs/
+02_outputs/
+00_downloads/
