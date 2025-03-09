@@ -190,9 +190,11 @@ birdwind_all <- birdwind_all |>
   mutate(windangle = (180/3.14)*atan2(uwnd, vwnd))
 
 
-
+birdswind_df <- birdwind_all |>
+  #st_coordinates() |>
+  st_drop_geometry() 
 
 
 #save the data
 st_write(birdwind_all, path("02_outputs", "birdwind_all.gpkg"), driver = "GPKG")
-
+write.csv(birdswind_df, path("02_outputs", "birdwind_all.csv"))
