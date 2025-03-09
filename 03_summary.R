@@ -5,10 +5,9 @@ library(climaemet)
 library(ggplot2)
 
 
-
 bb <- st_read(path("02_outputs", "birdwind_all.gpkg"), quiet = TRUE) 
 
-head(bb)
+#head(bb)
 
 bb <- bb |> 
   select(id, datetime, Fix, Alt.m., bearing, speed_kmh, geoid_height, ortho_height, 
