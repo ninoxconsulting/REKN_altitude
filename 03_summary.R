@@ -32,8 +32,6 @@ sort(unique(bb$ortho_height, na.rm = TRUE))
 sort(unique(bb$ws, na.rm = TRUE))
 
 
-
-
 # plot the speed and geoid height in geom_point
 ggplot(bb, aes(x = speed_kmh, y = ortho_height)) +
   geom_point() +
