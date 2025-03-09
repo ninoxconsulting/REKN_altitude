@@ -61,7 +61,7 @@ ggplot(bb, aes(x = speed_kmh)) +
 
 
 # summary of all points
-# note this does not work currently as need to convert from bearing to azmith? Still to do. 
+# TODO: note this does not work currently as need to convert from bearing to azmith? Still to do. 
 rose <- ggwindrose(
   speed = bb$ws,
   direction = bb$windangle,
