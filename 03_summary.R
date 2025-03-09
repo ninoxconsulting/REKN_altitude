@@ -41,13 +41,6 @@ ggplot(bb, aes(x = speed_kmh, y = ortho_height)) +
   theme_minimal() + xlim(c(0, 50))
 
 
-ggplot(bb, aes(x = Fix)) +
-  geom_bar() +
-  labs(title = "Fix Quality",
-       x = "Fix Quality",
-       y = "Frequency") +
-  theme_minimal(
-
 
 
 
@@ -65,8 +58,10 @@ ggplot(bb, aes(x = speed_kmh)) +
   theme_minimal() + xlim(c(0, 100)) 
 
 
-# summary of all points
 
+
+# summary of all points
+# note this does not work currently as need to convert from bearing to azmith? Still to do. 
 rose <- ggwindrose(
   speed = bb$ws,
   direction = bb$windangle,
