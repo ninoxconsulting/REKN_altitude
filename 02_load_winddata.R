@@ -76,6 +76,14 @@ if (!dir.exists(path("00_downloads"))) {
 
 # step through each unique date and download the corresponding file based on naming 
 
+## CAM NOTES - seems to be a 60 second timeout on the download which has caused a few sporadic failures in the download
+## from my end. If a file fails to download due to this timeout, it will still show up in the downloads folder but will
+## not be able to be read as a SpatRaster (I guess it's not a fully downloaded .nc file?). Seems to be a possibility that
+## we can increase the timeout in our global R options using options(timeout = X). Perhaps we can try to bump up this option
+## and see if this mitigates the error. The manual solution I used was removing the file where the download failed and then
+## re-running the download section of the code to continue. However it failed multiple times so each failure I had to remove
+## the last file and re-run until I got all 20 files downloaded and functioning properly.
+
 dls <- purrr::map(unique_dates, function(i) {
   #i <- unique_dates[1]
 
