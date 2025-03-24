@@ -84,6 +84,11 @@ if (!dir.exists(path("00_downloads"))) {
 ## re-running the download section of the code to continue. However it failed multiple times so each failure I had to remove
 ## the last file and re-run until I got all 20 files downloaded and functioning properly.
 
+# set a larger timeout to prevent file download failure in the code
+options(timeout = 1000)
+
+# download relevant wind files
+
 dls <- purrr::map(unique_dates, function(i) {
   #i <- unique_dates[1]
 
