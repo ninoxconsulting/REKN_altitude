@@ -70,6 +70,13 @@ birds_sf <- birds_sf |>
     speed_kmh = round((dist_km / timediff_hrs), 1)
   )
 
+# Convert bearings to azimuths
+for(i in 2:nrow(birds_sf)){
+  if(birds_sf[i,]$bearing < 0){
+    birds_sf[i,]$bearing <- birds_sf[i,]$bearing + 360 # adds the difference of 360 to any negative values to get the azimuth
+  }
+}
+
 
 # 4) Calculate and Convert Geoid Heights
 
