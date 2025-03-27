@@ -85,7 +85,7 @@ EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravita
 birds_vect <- vect(birds_sf) # converting the birds dataset to a SpatVector
 birds_vect <- project(birds_vect, "EPSG:4979") # reprojecting birds dataset to the same CRS as the geoid model
 
-geoid_height <- extract(EGM2008_1, birds_vect)  # tested these calculated geoid values against the geoid height calculator and the values matched
+geoid_height <- terra::extract(EGM2008_1, birds_vect)  # tested these calculated geoid values against the geoid height calculator and the values matched
 geoid_height <- geoid_height$geoid_undulation # the extract function creates a data frame so this function just gets the geoid values as a vector
 
 
@@ -96,6 +96,40 @@ birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formul
 
 # formula for geoid height: N = h - H
 # N: geoid height; h: ellipsoid height; H: orthometric height
+
+# 4.5) Determine Onshore, Offshore, Nearshore for bird pings
+land <- st_read(path("01_inputs", "ne_10m_admin_0_countries.shp")) # read in the countries dataset
+land <- st_make_valid(land) # there may be some duplicate vertex issues that arise from the countries dataset so we resolve this
+
+nearshore <- lengths(st_intersects(birds_sf, st_buffer(land, 300))) > 0 # nearshore is 300 metres from the shoreline
+
+# assign shore comparison columns for onshore/offshore/nearshore
+birds_sf$onshore <- lengths(st_intersects(birds_sf, land)) > 0 # onshore is anything over a landmass
+birds_sf$nearshore <- nearshore & !onshore # refining nearshore to exclude any onshore pings
+birds_sf$offshore <- !onshore & !nearshore # any pings not meeting onshore or nearshore criteria are offshore
+
+shore_status <- c()
+
+for(i in 1:nrow(birds_sf)){ # loop through bird data and assign onshore/offshore/nearshore based on shore comparison columns
+  if(birds_sf[i,]$onshore == TRUE && birds_sf[i,]$offshore == FALSE && birds_sf[i,]$nearshore == FALSE){
+    shore_status[i] <- 'Onshore'
+  }
+  else if(birds_sf[i,]$onshore == FALSE && birds_sf[i,]$offshore == TRUE && birds_sf[i,]$nearshore == FALSE){
+    shore_status[i] <- 'Offshore'
+  }
+  else if(birds_sf[i,]$onshore == FALSE && birds_sf[i,]$offshore == FALSE && birds_sf[i,]$nearshore == TRUE){
+    shore_status[i] <- 'Nearshore'
+  }
+  else{
+    shore_status[i] <- 'ERROR'
+  }
+}
+
+birds_sf$shore_status <- shore_status # add the shore status column to the bird data
+
+birds_sf <- subset(birds_sf, select = -c(onshore, offshore, nearshore)) # drop the shore comparison columns
+
+
 
 # if folder does not exist create it
 if (!dir.exists(path("02_outputs"))) {
