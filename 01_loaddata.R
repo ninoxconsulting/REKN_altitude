@@ -12,13 +12,18 @@ library(lubridate)
 ## DATA PRE-PROCESSING ##
 # Read CSV Data
 
-
 # TODO: add a purrr::map to be able to loop through many files/birds, 
 # need to add a value to distinguish the tag id.
 
+### List all bird files in the inputs folder
+bird_files <- list.files(path("01_inputs/bird_data")) # Read in a list of all bird CSV data
 
+### Loop through each existing bird CSV file and perform the analyses
+birds_processed <- purrr::map(bird_files, function(b) {
 
-birds <- read_csv(path("01_inputs", "DS 2 _P7165_Con_213835_250122134729.csv"), name_repair = "unique", locale = locale(encoding = "latin1"))
+## 0) Data Pre-Processing
+# Read in CSV Data
+birds <- read_csv(path("01_inputs/bird_data", b), name_repair = "unique", locale = locale(encoding = "latin1"))
 
 # Convert to SF Object
 birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, remove = FALSE)
@@ -57,11 +62,11 @@ birds_sf$dist_km <- dist_km # add the distance column to the table
 
 
 
-# 2) calculate the time between ping locations
+## 2) calculate the time between ping locations
 
 birds_sf$timediff_hrs <- as.numeric(difftime(birds_sf$datetime, lag(birds_sf$datetime), units = "hours"))
 
-# 3) calculate the bearing and speed of travel
+## 3) calculate the bearing and speed of travel
 
 birds_sf <- birds_sf |>
   rowwise() |>
@@ -78,7 +83,7 @@ for(i in 2:nrow(birds_sf)){
 }
 
 
-# 4) Calculate and Convert Geoid Heights
+## 4) Calculate and Convert Geoid Heights
 
 EGM2008_1 <- rast(path("01_inputs", "us_nga_egm2008_1.tif")) # The Earth Gravitational Geoid Model 2008 1'
 
@@ -97,7 +102,7 @@ birds_sf$ortho_height <- birds_sf$`Alt(m)` + abs(geoid_height) # uses the formul
 # formula for geoid height: N = h - H
 # N: geoid height; h: ellipsoid height; H: orthometric height
 
-# 4.5) Determine Onshore, Offshore, Nearshore for bird pings
+## 4.5) Determine Onshore, Offshore, Nearshore for bird pings
 land <- st_read(path("01_inputs", "ne_10m_admin_0_countries.shp")) # read in the countries dataset
 land <- st_make_valid(land) # there may be some duplicate vertex issues that arise from the countries dataset so we resolve this
 
@@ -105,8 +110,8 @@ nearshore <- lengths(st_intersects(birds_sf, st_buffer(land, 300))) > 0 # nearsh
 
 # assign shore comparison columns for onshore/offshore/nearshore
 birds_sf$onshore <- lengths(st_intersects(birds_sf, land)) > 0 # onshore is anything over a landmass
-birds_sf$nearshore <- nearshore & !onshore # refining nearshore to exclude any onshore pings
-birds_sf$offshore <- !onshore & !nearshore # any pings not meeting onshore or nearshore criteria are offshore
+birds_sf$nearshore <- nearshore & !birds_sf$onshore # refining nearshore to exclude any onshore pings
+birds_sf$offshore <- !birds_sf$onshore & !nearshore # any pings not meeting onshore or nearshore criteria are offshore
 
 shore_status <- c()
 
@@ -129,12 +134,20 @@ birds_sf$shore_status <- shore_status # add the shore status column to the bird 
 
 birds_sf <- subset(birds_sf, select = -c(onshore, offshore, nearshore)) # drop the shore comparison columns
 
+## Returns the bird_sf as the output for each iteration of the loop
+return(birds_sf)
+})
 
-
-# if folder does not exist create it
+## Create output folder for storing data if folder does not exist
 if (!dir.exists(path("02_outputs"))) {
   dir.create(path("02_outputs"))
 }
 
-#saveRDS(birds_sf, path("02_outputs", "birds_raw.rds"))
-st_write(birds_sf, path("02_outputs", "birds_raw.gpkg"), driver = "GPKG")
+if (!dir.exists(path("02_outputs/birds_raw_proc"))) {
+  dir.create(path("02_outputs/birds_raw_proc"))
+}
+
+## Save each processed bird dataset to the outputs folder for further processing for wind data
+for(f in 1:length(birds_processed)){
+  st_write(birds_processed[[f]], path("02_outputs/birds_raw_proc", paste("birds_raw_", f, ".gpkg", sep = "")), driver = "GPKG")
+}
