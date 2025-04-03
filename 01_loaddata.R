@@ -157,4 +157,4 @@ if (!dir.exists(path("02_outputs/birds_raw_proc"))) {
   dir.create(path("02_outputs/birds_raw_proc"))
 }
 
-st_write(birds_sf, path("02_outputs/birds_raw_proc", "birds_raw.gpkg"), driver = "GPKG")
+st_write(birds_sf, path("02_outputs/birds_raw_proc", "birds_raw.gpkg"), append = FALSE,driver = "GPKG")
