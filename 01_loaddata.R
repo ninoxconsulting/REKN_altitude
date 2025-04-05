@@ -21,40 +21,48 @@ bird_files <- bird_files[1:60]
 birds_processed <- purrr::map(bird_files, function(b) {
   # testing
   # b <- bird_files[1]
-
+  
   bname <- gsub(".*/(.*)", "\\1", b)
-
+  
   cli::cli_alert_info("processing {bname}")
-
+  
   ## 0) Data Pre-Processing
   # Read in CSV Data
   birds <- read_csv(path("01_inputs/bird_data", b), name_repair = "unique", locale = locale(encoding = "latin1"))
-
+  
   # Filter Out Bad Data and Sort by Date Ascending
   birds <- birds %>% filter(CRC != "Fail")
-
+  
+  ## Use an if statement to skip records that no longer have at least 3 records after filtering bad data
+  if(nrow(birds) >= 3){
+  
+  # Filter Out Bad Latitude / Longitude Values
+  birds <- birds %>% filter(Latitude >= -90 & Latitude <= 90)
+  birds <- birds %>% filter(Longitude >= -180 & Latitude <= 180)
+    
   # Convert to SF Object
   birds_sf <- st_as_sf(birds, coords = c("Longitude", "Latitude"), crs = 4326, remove = FALSE)
-
+  
   birds_sf <- birds_sf |>
     dplyr::mutate(datetime = dmy_hms(paste(Date, Time, sep = " ")))
-
+  
   birds_sf <- birds_sf %>% arrange(datetime)
-
+  
   # add a check to remove points that are obviously wrong but not flagged as fail.
   birds_sf$year <- year(birds_sf$datetime) # add a year column to the dataset
   birds_sf <- birds_sf |>
     filter(year < 2025) |>
     select(-year)
-
+  
   birds_sf <- birds_sf |>
     mutate(
       location.long_prior = lag(Longitude, 1L),
       location.lat_prior = lag(Latitude, 1L),
       filename = bname
     )
-
-  # Calculate Distance Between Sequential Ping Locations
+  
+  
+  ## 1) Calculate Distance Between Sequential Ping Locations
   birds_dist <- st_distance(birds_sf) # Creates a distance matrix for every point's distance to every other point in the dataset (in metres)
 
   dist_seq <- c() # creates an empty vector to store sequential distances
@@ -93,10 +101,11 @@ birds_processed <- purrr::map(bird_files, function(b) {
   }
 
   return(birds_sf)
+  }
 }) |> bind_rows()
 
 
-birds_sf <- birds_processed
+birds_sf <- birds_processed # creates a single variable for the bird data prior to geoid and onshore calculations
 
 ## 4) Calculate and Convert Geoid Heights
 
