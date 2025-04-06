@@ -15,12 +15,12 @@ library(lubridate)
 ### List all bird files in the inputs folder
 bird_files <- list.files(path("01_inputs/bird_data"), recursive = TRUE, pattern = ".csv") # Read in a list of all bird CSV data
 
-bird_files <- bird_files[1:60]
+#bird_files <- bird_files[1:60]
 
 ### Loop through each existing bird CSV file and perform the analyses
 birds_processed <- purrr::map(bird_files, function(b) {
   # testing
-  # b <- bird_files[1]
+  # b <- bird_files[345]
   
   bname <- gsub(".*/(.*)", "\\1", b)
   
@@ -28,7 +28,8 @@ birds_processed <- purrr::map(bird_files, function(b) {
   
   ## 0) Data Pre-Processing
   # Read in CSV Data
-  birds <- read_csv(path("01_inputs/bird_data", b), name_repair = "unique", locale = locale(encoding = "latin1"))
+  birds <- read_csv(path("01_inputs/bird_data", b), name_repair = "unique", locale = locale(encoding = "latin1"),
+                    show_col_types = FALSE)
   
   # Filter Out Bad Data and Sort by Date Ascending
   birds <- birds %>% filter(CRC != "Fail")
@@ -100,9 +101,14 @@ birds_processed <- purrr::map(bird_files, function(b) {
     }
   }
 
-  return(birds_sf)
+  
+  } else {
+    cli::cli_alert_danger("skipping {bname} because it has less than 3 records after filtering")
   }
-}) |> bind_rows()
+  return(birds_sf)
+}) 
+
+birds_processed <- birds_processed |> bind_rows()
 
 
 birds_sf <- birds_processed # creates a single variable for the bird data prior to geoid and onshore calculations
