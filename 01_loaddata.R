@@ -15,7 +15,7 @@ library(lubridate)
 ### List all bird files in the inputs folder
 bird_files <- list.files(path("01_inputs/bird_data"), recursive = TRUE, pattern = ".csv") # Read in a list of all bird CSV data
 
-#bird_files <- bird_files[1:60]
+#bird_files <- bird_files[150:160]
 
 ### Loop through each existing bird CSV file and perform the analyses
 birds_processed <- purrr::map(bird_files, function(b) {
@@ -53,7 +53,9 @@ birds_processed <- purrr::map(bird_files, function(b) {
   birds_sf$year <- year(birds_sf$datetime) # add a year column to the dataset
   birds_sf <- birds_sf |>
     filter(year < 2025) |>
-    select(-year)
+    select(-year) |> 
+    mutate(Fix = as.character(Fix)) 
+  
   
   birds_sf <- birds_sf |>
     mutate(
@@ -108,10 +110,14 @@ birds_processed <- purrr::map(bird_files, function(b) {
   return(birds_sf)
 }) 
 
-birds_processed <- birds_processed |> bind_rows()
+# testing line 
+birds_proc_merge <- birds_processed |> bind_rows()
+# end testing 
 
 
-birds_sf <- birds_processed # creates a single variable for the bird data prior to geoid and onshore calculations
+# i kept this as a seperate line so we can test errors in the birds_processed file! 
+birds_sf <- birds_processed |> bind_rows()
+# creates a single variable for the bird data prior to geoid and onshore calculations
 
 ## 4) Calculate and Convert Geoid Heights
 
