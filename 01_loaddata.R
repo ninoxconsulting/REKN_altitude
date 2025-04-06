@@ -110,13 +110,17 @@ birds_processed <- purrr::map(bird_files, function(b) {
   return(birds_sf)
 }) 
 
-# testing line 
-birds_proc_merge <- birds_processed |> bind_rows()
-# end testing 
 
+
+# this includes some empty tibbles - get list of empty 
+aa <- purrr::map(birds_processed, function(x) {
+  nrow(x) ==0
+})
+
+birds_processed1 <- birds_processed[unlist(aa) == FALSE] # remove any empty dataframes from the list
 
 # i kept this as a seperate line so we can test errors in the birds_processed file! 
-birds_sf <- birds_processed |> bind_rows()
+birds_sf <- birds_processed1 |> bind_rows()
 # creates a single variable for the bird data prior to geoid and onshore calculations
 
 ## 4) Calculate and Convert Geoid Heights
