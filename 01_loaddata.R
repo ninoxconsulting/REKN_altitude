@@ -102,14 +102,14 @@ birds_processed <- purrr::map(bird_files, function(b) {
       birds_sf[i, ]$bearing <- birds_sf[i, ]$bearing + 360 # adds the difference of 360 to any negative values to get the azimuth
     }
   }
-
   
   } else {
     cli::cli_alert_danger("skipping {bname} because it has less than 3 records after filtering")
     birds_sf <- data.frame() # still sets birds_sf as an empty data frame to be added to birds_processed list
   }
+  
   return(birds_sf)
-}) 
+})
 
 # this includes some empty tibbles - get list of empty 
 aa <- purrr::map(birds_processed, function(x) {
