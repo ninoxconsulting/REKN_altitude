@@ -106,11 +106,10 @@ birds_processed <- purrr::map(bird_files, function(b) {
   
   } else {
     cli::cli_alert_danger("skipping {bname} because it has less than 3 records after filtering")
+    birds_sf <- data.frame() # still sets birds_sf as an empty data frame to be added to birds_processed list
   }
   return(birds_sf)
 }) 
-
-
 
 # this includes some empty tibbles - get list of empty 
 aa <- purrr::map(birds_processed, function(x) {
@@ -155,7 +154,10 @@ birds_sf$offshore <- !birds_sf$onshore & !nearshore # any pings not meeting onsh
 
 shore_status <- c()
 
+pb <- txtProgressBar(min = 0, max = nrow(birds_sf), initial = 0, style = 3) # creating a progress bar for the onshore loop
+
 for (i in 1:nrow(birds_sf)) { # loop through bird data and assign onshore/offshore/nearshore based on shore comparison columns
+  setTxtProgressBar(pb, i)
   if (birds_sf[i, ]$onshore == TRUE && birds_sf[i, ]$offshore == FALSE && birds_sf[i, ]$nearshore == FALSE) {
     shore_status[i] <- "Onshore"
   } else if (birds_sf[i, ]$onshore == FALSE && birds_sf[i, ]$offshore == TRUE && birds_sf[i, ]$nearshore == FALSE) {
@@ -165,6 +167,7 @@ for (i in 1:nrow(birds_sf)) { # loop through bird data and assign onshore/offsho
   } else {
     shore_status[i] <- "ERROR"
   }
+  close(pb)
 }
 
 birds_sf$shore_status <- shore_status # add the shore status column to the bird data
