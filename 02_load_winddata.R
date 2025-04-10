@@ -21,8 +21,11 @@ library(dplyr)
 
 
 # set up to read prepared file in
-list.files(path("02_outputs"))
-bird <- st_read(path("02_outputs", "birds_raw.gpkg"))
+list.files(path("02_outputs/birds_raw_proc"))
+bird <- st_read(path("02_outputs/birds_raw_proc", "birds_raw.gpkg"))
+
+# For testing
+bird <- bird[1:1000,]
 
 # note TIME has been dropped. but not a huge problem as we have the date_time stamp.
 
@@ -32,7 +35,8 @@ bird <- st_read(path("02_outputs", "birds_raw.gpkg"))
 
 # note for days which the recording is after
 
-bird$date_file <- as.character(unique(ymd_hms(bird$datetime)))
+bird$date_file <- as.character(ymd_hms(bird$datetime))
+#bird$date_file <- as.character(unique(ymd_hms(bird$datetime)))
 bird$date_file <- gsub("-", "", bird$date_file)
 bird$date_file <- sub(" .*", "", bird$date_file)
 
@@ -102,7 +106,9 @@ dls <- purrr::map(unique_dates, function(i) {
     cli::cli_alert("File already exists")
   } else {
     url <- paste0("https://data.remss.com/ccmp/v03.1/Y", fyear, "/M", fmonth, "/", fname)
-    download.file(url, destfile = fs::path("00_downloads", basename(url)), mode = "wb")
+    if(url.exists(url) == TRUE){ # check to see if the url exists (error with https://data.remss.com/ccmp/v03.1/YNA/MNA/CCMP_Wind_Analysis_NA_V03.1_L4.nc)
+      download.file(url, destfile = fs::path("00_downloads", basename(url)), mode = "wb")
+    }
   }
 })
 
@@ -121,9 +127,6 @@ dls <- purrr::map(unique_dates, function(i) {
 
 # TODO: what is the ws bands represent?
 # at each time count, 0 , 6, 12, 18 hours.
-
-
-
 
 bird
 
@@ -167,11 +170,12 @@ birdwind <- purrr::map(fls, function(i) {
 # once the data is extracted we can now subset the cols based on the windclass and then rename to make 
 # a single table. 
 
-winds <- purrr::map(birdwind$id, function(i){ 
+winds <- purrr::map(1:nrow(birdwind), function(i){
 
- # i = 1
+  #i = 194
   birdsub <- birdwind[i, ]
   
+  #if(st_is_empty(birdsub) == FALSE){
   wc <- as.character(st_drop_geometry(birdwind[i, "windclass"]) %>% pull())
   
   birdsub <- birdsub  |> 
@@ -180,8 +184,9 @@ winds <- purrr::map(birdwind$id, function(i){
   names(birdsub) <- c("id", "windclass", "uwnd", "vwnd", "ws", "geom")
   
   birdsub
+  #}
   
-} )  |> bind_rows()  
+} )  |> bind_rows()
          
   
 # clean up the old cols
@@ -207,7 +212,11 @@ birdswind_df <- birdwind_all |>
   #st_coordinates() |>
   st_drop_geometry() 
 
+# create sub-folder for final outputs if it does not already exist
+if (!dir.exists(path("02_outputs/birds_final_proc"))) {
+  dir.create(path("02_outputs/birds_final_proc"))
+}
 
 #save the data
-st_write(birdwind_all, path("02_outputs", "birdwind_all.gpkg"), driver = "GPKG")
-write.csv(birdswind_df, path("02_outputs", "birdwind_all.csv"))
+st_write(birdwind_all, path("02_outputs/birds_final_proc", "birdwind_all.gpkg"), driver = "GPKG")
+write.csv(birdswind_df, path("02_outputs/birds_final_proc", "birdwind_all.csv"))
