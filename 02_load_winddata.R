@@ -16,15 +16,11 @@ library(dplyr)
 #  deg grid, Version 3.0, Remote Sensing Systems, Santa Rosa, CA. Available at
 #  www.remss.com https://doi.org/10.56236/RSS-uv6h30
 
-
 # https://www.remss.com/measurements/ccmp/
-
 
 # set up to read prepared file in
 list.files(path("02_outputs/birds_raw_proc"))
 bird <- st_read(path("02_outputs/birds_raw_proc", "birds_raw.gpkg"))
-
-
 
 # For testing
 bird <- bird[1:1000,]
@@ -47,15 +43,12 @@ for(i in 1:nrow(bird)){
   }
 }
 
-
 bird$date_file <- as.character(ymd_hms(bird$datetime))
 #bird$date_file <- as.character(unique(ymd_hms(bird$datetime)))
 bird$date_file <- gsub("-", "", bird$date_file)
 bird$date_file <- sub(" .*", "", bird$date_file)
 
-
 # Assign a time catergory based on hour
-
 bird <- bird |>
   mutate(hour = hour(datetime)) |>
   mutate(timeclass = case_when(
@@ -65,7 +58,6 @@ bird <- bird |>
     hour > 15 & hour <= 21 ~ "18",
     hour > 21 ~ "24"
   ))
-
 
 bird <- bird |>
   mutate(winddate = case_when(
@@ -78,34 +70,21 @@ bird <- bird |>
     timeclass == "18" ~ "4",
     timeclass == "24" ~ "1")) |> 
   mutate(id = seq(1, nrow(bird), 1))
-    
- 
 
 # get a list of the unique dates in the dataset.
 unique_dates <- unique(bird$winddate)
 
 #  download relevant wind data files 
-
 # check if folder exists or create it
 if (!dir.exists(path("00_downloads"))) {
   dir.create(path("00_downloads"))
 }
 
 # step through each unique date and download the corresponding file based on naming 
-
-## CAM NOTES - seems to be a 60 second timeout on the download which has caused a few sporadic failures in the download
-## from my end. If a file fails to download due to this timeout, it will still show up in the downloads folder but will
-## not be able to be read as a SpatRaster (I guess it's not a fully downloaded .nc file?). Seems to be a possibility that
-## we can increase the timeout in our global R options using options(timeout = X). Perhaps we can try to bump up this option
-## and see if this mitigates the error. The manual solution I used was removing the file where the download failed and then
-## re-running the download section of the code to continue. However it failed multiple times so each failure I had to remove
-## the last file and re-run until I got all 20 files downloaded and functioning properly.
-
 # set a larger timeout to prevent file download failure in the code
 options(timeout = 1000)
 
 # download relevant wind files
-
 dls <- purrr::map(unique_dates, function(i) {
   #i <- unique_dates[1]
 
@@ -125,7 +104,6 @@ dls <- purrr::map(unique_dates, function(i) {
   }
 })
 
-
 # match the wind data for each of the bird datas 
 
 # each file contains a stacked rast with 16 layers.
@@ -141,14 +119,9 @@ dls <- purrr::map(unique_dates, function(i) {
 # TODO: what is the ws bands represent?
 # at each time count, 0 , 6, 12, 18 hours.
 
-
-
 bird
 
 # cycle through each file and intersect the data with appropriate line of bird data of data then cycle through the time period. 
-
-
-
 fls <- list.files("00_downloads")
 
 #fls <- fls[1:2]
@@ -187,10 +160,8 @@ birdwind <- purrr::map(fls, function(i) {
   
 }) |> bind_rows() 
 
-
 # once the data is extracted we can now subset the cols based on the windclass and then rename to make 
 # a single table. 
-
 winds <- purrr::map(1:nrow(birdwind), function(i){
 
   #i = 194
@@ -226,14 +197,12 @@ winds1 <- winds |>
 out <- left_join(birdwind1, winds1, by = c("id", "X", "Y"))
 birdwind_all  <- st_as_sf(out, coords = c("X", "Y"), crs = 4326)
 
-
 # calculate the wind angle 
 # note the results are between -180 and 180  is the  
 #atan2 is the angle relative to the x-axis in a graph +/-180 is West, +90 is N, 0 is E, -90 is S
 
 birdwind_all <- birdwind_all |>
   mutate(windangle = (180/3.14)*atan2(uwnd, vwnd))
-
 
 birdswind_df <- birdwind_all |>
   #st_coordinates() |>
