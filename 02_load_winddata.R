@@ -24,6 +24,8 @@ library(dplyr)
 list.files(path("02_outputs/birds_raw_proc"))
 bird <- st_read(path("02_outputs/birds_raw_proc", "birds_raw.gpkg"))
 
+
+
 # For testing
 bird <- bird[1:1000,]
 
@@ -34,6 +36,17 @@ bird <- bird[1:1000,]
 #  (based on the closest time to one of 6 hours blocks ; each day has a 0, 6, 12, and 18)
 
 # note for days which the recording is after
+
+# added row to change 00:00:00 time stamp to 00:00:01 to prevent dropping files. 
+for(i in 1:nrow(bird)){
+  if(as.character(bird[i,]$datetime) == paste(date(bird[i,]$datetime), '00:00:00')){
+    bird[i,]$datetime <- bird[i,]$datetime + 1
+  }
+  else{
+    bird[i,]$datetime <- bird[i,]$datetime
+  }
+}
+
 
 bird$date_file <- as.character(ymd_hms(bird$datetime))
 #bird$date_file <- as.character(unique(ymd_hms(bird$datetime)))
@@ -50,7 +63,7 @@ bird <- bird |>
     hour > 3 & hour <= 9 ~ "06",
     hour > 9 & hour <= 15 ~ "12",
     hour > 15 & hour <= 21 ~ "18",
-    hour < 21 ~ "24"
+    hour > 21 ~ "24"
   ))
 
 
@@ -128,9 +141,13 @@ dls <- purrr::map(unique_dates, function(i) {
 # TODO: what is the ws bands represent?
 # at each time count, 0 , 6, 12, 18 hours.
 
+
+
 bird
 
 # cycle through each file and intersect the data with appropriate line of bird data of data then cycle through the time period. 
+
+
 
 fls <- list.files("00_downloads")
 
@@ -152,17 +169,21 @@ birdwind <- purrr::map(fls, function(i) {
 
   # get the bird data for the date and time
   bird_sub <- bird %>% filter(winddate == fdate)
-                            
-  # get the values for the bird data
-  bird_values <- terra::extract(rr, bird_sub)
   
-  # add the values to the bird data
-  bird_sub <- cbind(bird_sub, bird_values)
-  
-  bird_sub <- bird_sub |> 
-    select(-c(nobs_1, nobs_2, nobs_3, nobs_4))
-  
-  return(bird_sub)
+  if(nrow(bird_sub) >0) {
+    #cli::cli_alert("No bird data for {fdate}")
+    
+    # get the values for the bird data
+    bird_values <- terra::extract(rr, bird_sub)
+    
+    # add the values to the bird data
+    bird_sub <- cbind(bird_sub, bird_values)
+    
+    bird_sub <- bird_sub |> 
+      select(-c(nobs_1, nobs_2, nobs_3, nobs_4))
+    
+    return(bird_sub)
+  }
   
 }) |> bind_rows() 
 
@@ -188,16 +209,22 @@ winds <- purrr::map(1:nrow(birdwind), function(i){
   
 } )  |> bind_rows()
          
-  
-# clean up the old cols
+# clean up the old cols and join the matching data back together
 
-birdwind <- birdwind |>
-  select(-c(ends_with(c("1", "2", "3", "4")), "windclass", "ID", "id"))
+birdwind1 <- birdwind |>
+  select(-c(ends_with(c("1", "2", "3", "4")), "windclass", "ID"))
 
+# convert to dataframe and add covariates
+birdwind1 <- birdwind1 |> 
+  cbind(st_coordinates(birdwind1))%>%
+  st_drop_geometry() 
 
-# join the matching data back together
+winds1 <- winds |> 
+  cbind(st_coordinates(winds))%>%
+  st_drop_geometry()
 
-birdwind_all <- st_join(birdwind, winds)
+out <- left_join(birdwind1, winds1, by = c("id", "X", "Y"))
+birdwind_all  <- st_as_sf(out, coords = c("X", "Y"), crs = 4326)
 
 
 # calculate the wind angle 
@@ -218,5 +245,5 @@ if (!dir.exists(path("02_outputs/birds_final_proc"))) {
 }
 
 #save the data
-st_write(birdwind_all, path("02_outputs/birds_final_proc", "birdwind_all.gpkg"), driver = "GPKG")
+st_write(birdwind_all, path("02_outputs/birds_final_proc", "birdwind_all.gpkg"), driver = "GPKG", append = FALSE)
 write.csv(birdswind_df, path("02_outputs/birds_final_proc", "birdwind_all.csv"))
