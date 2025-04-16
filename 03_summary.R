@@ -1,7 +1,7 @@
 #save the data
 library(sf)
 #install.packages("climaemet")
-library(climaemet)
+#library(climaemet)
 library(ggplot2)
 
 
@@ -81,10 +81,18 @@ ggplot(bb, aes(x = speed_kmh, y = ortho_height, colour = shore_status)) +
   geom_point() +
   labs(title = "Speed vs Altitude",
        x = "Speed (km/h)",
-       y = "Altitude (m)") +
+       y = "Altitude (m) ortho-height") +
   theme_minimal() + xlim(c(0, 50))
 
 
+
+# plot the speed and geoid height in geom_point by type 
+ggplot(bb, aes(x = speed_kmh, y = geoid_height, colour = shore_status)) +
+  geom_point() +
+  labs(title = "Speed vs Altitude",
+       x = "Speed (km/h)",
+       y = "Altitude (m) geoid_height") +
+  theme_minimal() + xlim(c(0, 50))
 
 
 
