@@ -15,7 +15,7 @@ library(lubridate)
 ### List all bird files in the inputs folder
 bird_files <- list.files(path("01_inputs/bird_data"), recursive = TRUE, pattern = ".csv") # Read in a list of all bird CSV data
 
-#bird_files <- bird_files[150:160]
+#bird_files <- bird_files[c(30,37)]
 
 ### Loop through each existing bird CSV file and perform the analyses
 birds_processed <- purrr::map(bird_files, function(b) {
