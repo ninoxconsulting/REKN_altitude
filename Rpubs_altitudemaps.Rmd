@@ -1,13 +1,41 @@
-#save the data
+---
+title: "REKN altitude mapping"
+author: "Gen Perkins"
+date: "2025-04-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#library("rnaturalearth")
+#library("rnaturalearthdata")
+library(lubridate)
 library(sf)
-#install.packages("climaemet")
-library(climaemet)
-library(ggplot2)
-library(fs)
+library(stringr)
+library(readr)
 library(dplyr)
+library(ggplot2)
+library(ggspatial)
+library(leaflet)
+library(fs)
+
+
+```
+
+## Altitude Mapping for Red Knots. 
+
+While the use of high accuracy GPS location data has enabled better understanding of speed and distance of long distance migratory birds, such as Red Knots. 
+
+Despite these developments, an understanding of bird altitude movements remains less understood.
+
+In this project we used Red Knot GPS data, along with modeled wind speed and directions to assemble data on both bird movement (speed, direction, bearing) and ambient wind conditions. We specifically were interested in offshore movements, and estimated wind speed and direction using the RSS Cross-Calibrated Multi-Platform (CCMP) 6-hourly ocean vector wind analysis on 0.25 deg grid, Version 3.0 
+(see:<https://doi.org/10.56236/RSS-uv6h30>).
+
+
+```{r load data, include=FALSE}
 
 bb <- st_read(path("02_outputs", "birds_final_proc","birdwind_all_20250426.gpkg"), quiet = TRUE) 
-
 
 # format the data 
 
@@ -39,28 +67,6 @@ bb <- bb |>
                                    levels = c("0 - 50", "50 - 100", "100 - 250", "250 - 500", "500 - 1000", "1000 - 2000", ">2000")))
 
 
-
-
-
-
-####################################################################################
-# Summary plots - general all birds
-
-bbs <- bb |> 
-  group_by(bid) |>
-  st_drop_geometry() |>
-  summarise(
-    n = n(),
-    start = min(datetime),
-    end = max(datetime),
-    duration = as.numeric(difftime(end, start, units = "days")),
-    .groups = "drop"
-    
-  )
-
-
-# review the onshore/offshore data
-
 # summary of individuals by type of location data 
 bbt <- bb |> 
   group_by(bid, shore_status) |>
@@ -81,111 +87,42 @@ bb_od <- bb |>
   filter(bid %in% offshore$bid) 
 
 
+```
 
-# fix = quality of data 
-# Alt.m. = altitude in meters - based on GPS 
-# bearing = direction of travel calculated between points using geosphere (-180 to 180)
-# speed_kmh = speed in km/h calculated between points
-# geoid_height = height above the geoid (sea level) in meters
-# ortho_height = height above the ellipsoid in meters
-# ws = wind speed in m/s using the modelled CCMP data
-# windangle = wind direction in degrees using the modelled CCMP data (-180 to 180)
+## Individual Bird Plots 
 
-# sort(unique(bb$speed_kmh, na.rm = TRUE)) # outliers
-# sort(unique(bb$bearing, na.rm = TRUE))
-# sort(unique(bb$geoid_height, na.rm = TRUE))
-# sort(unique(bb$ortho_height, na.rm = TRUE))
-# sort(unique(bb$ws, na.rm = TRUE))
+We can explore individual birds in an interactive map. The coloured circles represent the altitude of the bird at a given location. 
+You can hover over the dot to show the date or click each dot to pull up more infomation about the bird, including the date and time of the observation, the altitude, and wind speed and direction.
+
+The black arrows with the grey bakground represent the modelled wind direction at a height of 10m above the ocean. Click on the grey marker to show the modeled wind. 
+
+Note layers can be turned on or off using the tick boxes in the top right corner of the map. 
 
 
-# plot the speed and geoid height in geom_point
-ggplot(bb, aes(x = speed_kmh, y = ortho_height, colour = bid)) +
-  geom_point() +
-  labs(title = "Speed vs Altitude",
-       x = "Speed (km/h)",
-       y = "Altitude (m)") +
-  theme_minimal() + xlim(c(0, 500))+ theme(legend.position="none")
-  
+**Bird Argos id: 233928**
 
-# plot the speed and geoid height in geom_point by type 
-ggplot(bb, aes(x = speed_kmh, y = ortho_height, colour = shore_status)) +
-  geom_point() +
-  labs(title = "Speed vs Altitude",
-       x = "Speed (km/h)",
-       y = "Altitude (m) ortho-height") +
-  theme_minimal() + xlim(c(0, 50)) 
-
-
-# # plot the speed and geoid height in geom_point by type 
-# ggplot(bb, aes(x = speed_kmh, y = geoid_height, colour = shore_status)) +
-#   geom_point() +
-#   labs(title = "Speed vs Altitude",
-#        x = "Speed (km/h)",
-#        y = "Altitude (m) geoid_height") +
-#   theme_minimal() + xlim(c(0, 50))
-
-
-
-# # summary of all points speeds 
-# 
-# ggplot(bb, aes(x = speed_kmh)) +
-#   geom_histogram(bins = 30) +
-#   labs(title = "Histogram of Speeds",
-#        x = "Speed (km/h)",
-#        y = "Frequency") +
-#   theme_minimal() + xlim(c(0, 100)) 
-
-
-################################################################################
-
-# Plot - windrose example plots 
-
-# summary of all points
-# TODO: note this does not work currently as need to convert from bearing to azmith? Still to do. 
-# need to convert wind angle (0 - 360)
-
-rose <- ggwindrose(
-  speed = bb_od$ws,
-  direction = bb_od$windangle_azmith,
-  n_directions = 8,
-  n_speeds = 4,
-  #speed_cuts = seq(0, 16, 4),
-  legend_title = "Wind speed (m/s)",
-  calm_wind = 0,
-  n_col = 1,
-  plot_title = "Test Red Knot"
-)
-rose + labs(
-  subtitle = "2000-2020",
-  caption = "Source: AEMET"
-  
-)
-
-
-
-####################################################################################
-
-# leaflet plots 
-
-library("rnaturalearth")
-library("rnaturalearthdata")
-library(lubridate)
-library(sf)
-library(stringr)
-library(readr)
-library(dplyr)
-library(ggplot2)
-#library (gganimate)
-library(ggspatial)
-library(leaflet)
-
-
+```{r pressure, echo=FALSE}
 ## read in compiled data with movements and limit to rufa 
 xx <- unique(bb_od$bid)
 
 bb_od <- cbind(bb_od , st_coordinates(bb_od ))
 
-sort(unique(round(bb_od$ortho_height,0))) # outliers
+#sort(unique(round(bb_od$ortho_height,0))) # outliers
+
+# format colours 
+bb_od <- bb_od |> 
+  mutate(ortho_height_cat = case_when(
+      ortho_height < 50 ~ "0 - 50",
+      ortho_height >= 50 & ortho_height < 100 ~ "50 - 100",
+      ortho_height >= 100 & ortho_height < 250 ~ "100 - 250",
+      ortho_height >= 250 & ortho_height < 500 ~ "250 - 500",
+      ortho_height >= 500 & ortho_height < 1000 ~ "500 - 1000",
+          ortho_height >= 1000 & ortho_height < 2000 ~ "1000 - 2000",
+      ortho_height >= 2000 ~ ">2000"
+    )) |> 
+  mutate(ortho_height_cat = factor(ortho_height_cat, 
+                                    levels = c("0 - 50", "50 - 100", "100 - 250", "250 - 500", "500 - 1000", "1000 - 2000", ">2000")))
+
 
 
 # select an example bird 
@@ -248,7 +185,6 @@ shipIcon3 <- awesomeIcons(
 
 # create map 
 
-
 birdmapall <- leaflet(bi) |> 
   #addProviderTiles("CartoDB.DarkMatter") %>%
   addProviderTiles("CartoDB", group = "Background") |> 
@@ -272,7 +208,7 @@ birdmapall <- leaflet(bi) |>
   #addPolylines(data =bi, lng = bi$X, lat = bi$Y,
   #             color = "grey",   opacity = 0.1, stroke = TRUE, group = "Bird trajectory") |> 
   addLegend("bottomright", pal = pal, values = ~bi$ortho_height_cat,
-          title = "Flight Altitude",
+          title = "Flight Altitude (m)",
            opacity = 1) |>
    addAwesomeMarkers(
      lng = bi$X, 
@@ -289,25 +225,11 @@ birdmapall <- leaflet(bi) |>
     ,
     overlayGroups = c("Bird Altitude", "Bird trajectory", "Wind speed and direction"),
     options = layersControlOptions(collapsed = FALSE)
-  ) |> 
-  addControl(title, position = "topleft", className="map-title")
+  )
 
 
 birdmapall
 
-# layer control 
-#https://rstudio.github.io/leaflet/articles/showhide.html
+```
 
-
-# add markers 
-#https://rstudio.github.io/leaflet/articles/markers.html#icon-markers
-#https://leafletjs.com/examples/custom-icons/
-#https://r-graph-gallery.com/182-add-circles-rectangles-on-leaflet-map.html
-
-#colours
-#https://rstudio.github.io/leaflet/articles/colors.html
-
-
-#icons
-#https://ionic.io/ionicons
 

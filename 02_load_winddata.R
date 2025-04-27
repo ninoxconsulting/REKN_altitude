@@ -19,11 +19,12 @@ library(dplyr)
 # https://www.remss.com/measurements/ccmp/
 
 # set up to read prepared file in
-list.files(path("02_outputs/birds_raw_proc"))
-bird <- st_read(path("02_outputs/birds_raw_proc", "birds_raw.gpkg"))
+
+list.files(path("02_outputs"))
+bird <- st_read(path("02_outputs", "birds_raw_proc","birds_raw.gpkg"))
 
 # For testing
-bird <- bird[1:1000,]
+#bird <- bird[1:1000,]
 
 # note TIME has been dropped. but not a huge problem as we have the date_time stamp.
 
@@ -33,18 +34,23 @@ bird <- bird[1:1000,]
 
 # note for days which the recording is after
 
+
 # added row to change 00:00:00 time stamp to 00:00:01 to prevent dropping files. 
-for(i in 1:nrow(bird)){
-  if(as.character(bird[i,]$datetime) == paste(date(bird[i,]$datetime), '00:00:00')){
-    bird[i,]$datetime <- bird[i,]$datetime + 1
-  }
-  else{
-    bird[i,]$datetime <- bird[i,]$datetime
-  }
-}
+bird$datetime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",bird$datetime)] <- paste(
+  bird$datetime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",bird$datetime)],"00:00:01")
+
+
+# added row to change 00:00:00 time stamp to 00:00:01 to prevent dropping files. 
+#for(i in 1:nrow(bird)){
+#  if(as.character(bird[i,]$datetime) == paste(date(bird[i,]$datetime), '00:00:00')){
+#    bird[i,]$datetime <- bird[i,]$datetime + 1
+#  }
+#  else{
+#    bird[i,]$datetime <- bird[i,]$datetime
+#  }
+#}
 
 bird$date_file <- as.character(ymd_hms(bird$datetime))
-#bird$date_file <- as.character(unique(ymd_hms(bird$datetime)))
 bird$date_file <- gsub("-", "", bird$date_file)
 bird$date_file <- sub(" .*", "", bird$date_file)
 
@@ -127,7 +133,7 @@ fls <- list.files("00_downloads")
 #fls <- fls[1:2]
 
 birdwind <- purrr::map(fls, function(i) {
-#  i <- fls[2]
+  #i <- fls[21]
   # for each file 
   cli::cli_alert("processing file {i}")
   
@@ -139,10 +145,10 @@ birdwind <- purrr::map(fls, function(i) {
   #rr <- rotate(r , "test_rotate.tif", left = TRUE, overwrite=TRUE)
   rr <- rotate(r ,  left = TRUE)
 
-
   # get the bird data for the date and time
-  bird_sub <- bird %>% filter(winddate == fdate)
   
+  bird_sub <- bird %>% filter(winddate == fdate)
+ 
   if(nrow(bird_sub) >0) {
     #cli::cli_alert("No bird data for {fdate}")
     
@@ -159,12 +165,19 @@ birdwind <- purrr::map(fls, function(i) {
   }
   
 }) |> bind_rows() 
+# note some records dont have wind data and are dropped.
+
+#xx <- birdwind
+#birdwind = xx
+
 
 # once the data is extracted we can now subset the cols based on the windclass and then rename to make 
 # a single table. 
-winds <- purrr::map(1:nrow(birdwind), function(i){
 
+winds <- purrr::map(1:nrow(birdwind), function(i){
+  #i = 1
   #i = 194
+
   birdsub <- birdwind[i, ]
   
   #if(st_is_empty(birdsub) == FALSE){
@@ -180,6 +193,7 @@ winds <- purrr::map(1:nrow(birdwind), function(i){
   
 } )  |> bind_rows()
          
+
 # clean up the old cols and join the matching data back together
 
 birdwind1 <- birdwind |>
@@ -208,11 +222,25 @@ birdswind_df <- birdwind_all |>
   #st_coordinates() |>
   st_drop_geometry() 
 
+# calculate the wind speed azmith
+
+birdwind_all <- birdwind_all |>
+  mutate(windangle_azmith = case_when(
+    windangle < 0 ~ windangle + 360,
+    TRUE ~ windangle
+  ))
+
+
+#save the data
+#birdwind_all <- st_read(path("02_outputs","birds_final_proc", "birdwind_all_20250415.gpkg")) #, driver = "GPKG")
+
+
 # create sub-folder for final outputs if it does not already exist
 if (!dir.exists(path("02_outputs/birds_final_proc"))) {
   dir.create(path("02_outputs/birds_final_proc"))
 }
 
+
 #save the data
-st_write(birdwind_all, path("02_outputs/birds_final_proc", "birdwind_all.gpkg"), driver = "GPKG", append = FALSE)
-write.csv(birdswind_df, path("02_outputs/birds_final_proc", "birdwind_all.csv"))
+st_write(birdwind_all, path("02_outputs","birds_final_proc", "birdwind_all_20250426.gpkg"), driver = "GPKG")
+write.csv(birdswind_df, path("02_outputs", "birds_final_proc","birdwind_all_20250426.csv"))
