@@ -222,11 +222,25 @@ birdswind_df <- birdwind_all |>
   #st_coordinates() |>
   st_drop_geometry() 
 
+# calculate the wind speed azmith
+
+birdwind_all <- birdwind_all |>
+  mutate(windangle_azmith = case_when(
+    windangle < 0 ~ windangle + 360,
+    TRUE ~ windangle
+  ))
+
+
+#save the data
+#birdwind_all <- st_read(path("02_outputs","birds_final_proc", "birdwind_all_20250415.gpkg")) #, driver = "GPKG")
+
+
 # create sub-folder for final outputs if it does not already exist
 if (!dir.exists(path("02_outputs/birds_final_proc"))) {
   dir.create(path("02_outputs/birds_final_proc"))
 }
 
+
 #save the data
-st_write(birdwind_all, path("02_outputs","birds_final_proc", "birdwind_all_20250415.gpkg"), driver = "GPKG")
-write.csv(birdswind_df, path("02_outputs", "birds_final_proc","birdwind_all_20250415.csv"))
+st_write(birdwind_all, path("02_outputs","birds_final_proc", "birdwind_all_20250426.gpkg"), driver = "GPKG")
+write.csv(birdswind_df, path("02_outputs", "birds_final_proc","birdwind_all_20250426.csv"))
