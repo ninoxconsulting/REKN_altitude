@@ -311,3 +311,17 @@ birdmapall
 #icons
 #https://ionic.io/ionicons
 
+## Cam - Summary of Bird Tags and List
+bout <- read.csv(path("02_outputs", "birds_final_proc","birdwind_all.csv")) # final bird outputs
+blist <- read.csv(path("02_outputs","final_tags_list_edited.csv")) # bird tag ID list
+
+bout$bid <- '' # blank column for the tag ID to be stored
+
+for(b in 1:nrow(bout)){ # loop through every bird
+  for(i in 1:nrow(blist)){ # sub-loop through each tag ID list
+    if(grepl(blist[i,]$tag.id, bout[b,]$filename) == TRUE){ # if the tag ID matches the filename part with the ID
+      bout[b,]$bid <- blist[i,]$tag.id # assign the bid column with the tag ID for the matching bird
+    }
+  }
+  print(paste(b, " of ", nrow(bout)))
+} # tested the first few rows and it seems to assign the correct tagID to the correct bird row. This will take a while to run the full list
