@@ -8,7 +8,6 @@ library(dplyr)
 
 bb <- st_read(path("02_outputs", "birds_final_proc","birdwind_all_20250426.gpkg"), quiet = TRUE) 
 
-
 # format the data 
 
 bb <- bb |>
@@ -21,7 +20,6 @@ bb <- bb |>
     bproj = stringr::str_split_i(filename, "-", 2)
   ) |>
   select(-c(filename))
-
 
 
 # format colours 
@@ -37,6 +35,85 @@ bb <- bb |>
   )) |> 
   mutate(ortho_height_cat = factor(ortho_height_cat, 
                                    levels = c("0 - 50", "50 - 100", "100 - 250", "250 - 500", "500 - 1000", "1000 - 2000", ">2000")))
+
+
+# format the data 
+bbid <- as.numeric(unique(bb$bid))
+length(bbid) #178
+
+# summary with the bird list 
+blist_all <- read.csv(path("02_outputs","reference_data_edited.csv")) |> 
+  select(tag.id,tag.model) |> 
+  mutate(tag.id = as.character(tag.id)) 
+
+#blist <- blist_all |> 
+#  filter(tag.id %in% bbid)
+#length(blist$X) #130
+
+
+bb <- left_join(bb, blist_all, by = c("bid" = "tag.id")) # join the data with the bird list
+
+#48 which I dont have reference data for? 
+
+#setdiff(bbid, blist_all $tag.id) # check if all birds are in the list
+#setdiff( blist_all $tag.id, bbid) # check if all birds are in the list
+
+bb_type <- bb |> 
+  group_by(bid) |>
+  summarise(
+    n = n(),
+    start = min(datetime),
+    end = max(datetime),
+    duration = as.numeric(difftime(end, start, units = "days")),
+    .groups = "drop" 
+  )|> 
+  st_drop_geometry()
+
+bb_type <- bb_type |> 
+  left_join(blist_all, by = c("bid" = "tag.id")) 
+
+
+# check the following data 
+
+bb1 <- bb %>% filter(bb$bid == 224094) 
+bb1 <- bb %>% filter(bb$bid == 230314) 
+bb1 <- bb %>% filter(bb$bid == 233928) 
+bb1 <- bb %>% filter(bb$bid == 233922) 
+bb1 <- bb %>% filter(bb$bid == 232982) 
+
+
+
+badids <- c(8110, 8111, #224094
+            88401,  #230314
+            4224, #233928
+            3656) #233922
+
+
+bb <- bb %>% filter(!id %in% badids) 
+
+bb_type <- bb |> 
+  group_by(bid) |>
+  summarise(
+    n = n(),
+    start = min(datetime),
+    end = max(datetime),
+    duration = as.numeric(difftime(end, start, units = "days")),
+    .groups = "drop" 
+  )|> 
+  st_drop_geometry()
+
+bb_type <- bb_type |> 
+  left_join(blist_all, by = c("bid" = "tag.id")) 
+
+
+
+
+
+write.csv(bb, path("02_outputs", "birds_final_proc","birdwind_final.csv"), row.names = FALSE)
+st_write(bb, path("02_outputs", "birds_final_proc","birdwind_final.gpkg"), row.names = FALSE, append = FALSE)
+
+
+
 
 
 
@@ -136,31 +213,49 @@ ggplot(bb, aes(x = speed_kmh, y = ortho_height, colour = shore_status)) +
 #   theme_minimal() + xlim(c(0, 100)) 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ################################################################################
 
-# Plot - windrose example plots 
-
-# summary of all points
-# TODO: note this does not work currently as need to convert from bearing to azmith? Still to do. 
-# need to convert wind angle (0 - 360)
-
-rose <- ggwindrose(
-  speed = bb_od$ws,
-  direction = bb_od$windangle_azmith,
-  n_directions = 8,
-  n_speeds = 4,
-  #speed_cuts = seq(0, 16, 4),
-  legend_title = "Wind speed (m/s)",
-  calm_wind = 0,
-  n_col = 1,
-  plot_title = "Test Red Knot"
-)
-rose + labs(
-  subtitle = "2000-2020",
-  caption = "Source: AEMET"
-  
-)
-
+# # Plot - windrose example plots 
+# 
+# # summary of all points
+# # TODO: note this does not work currently as need to convert from bearing to azmith? Still to do. 
+# # need to convert wind angle (0 - 360)
+# 
+# rose <- ggwindrose(
+#   speed = bb_od$ws,
+#   direction = bb_od$windangle_azmith,
+#   n_directions = 8,
+#   n_speeds = 4,
+#   #speed_cuts = seq(0, 16, 4),
+#   legend_title = "Wind speed (m/s)",
+#   calm_wind = 0,
+#   n_col = 1,
+#   plot_title = "Test Red Knot"
+# )
+# rose + labs(
+#   subtitle = "2000-2020",
+#   caption = "Source: AEMET"
+#   
+# )
+# 
 
 
 ####################################################################################
@@ -310,18 +405,3 @@ birdmapall
 
 #icons
 #https://ionic.io/ionicons
-
-## Cam - Summary of Bird Tags and List
-bout <- read.csv(path("02_outputs", "birds_final_proc","birdwind_all.csv")) # final bird outputs
-blist <- read.csv(path("02_outputs","final_tags_list_edited.csv")) # bird tag ID list
-
-bout$bid <- '' # blank column for the tag ID to be stored
-
-for(b in 1:nrow(bout)){ # loop through every bird
-  for(i in 1:nrow(blist)){ # sub-loop through each tag ID list
-    if(grepl(blist[i,]$tag.id, bout[b,]$filename) == TRUE){ # if the tag ID matches the filename part with the ID
-      bout[b,]$bid <- blist[i,]$tag.id # assign the bid column with the tag ID for the matching bird
-    }
-  }
-  print(paste(b, " of ", nrow(bout)))
-} # tested the first few rows and it seems to assign the correct tagID to the correct bird row. This will take a while to run the full list

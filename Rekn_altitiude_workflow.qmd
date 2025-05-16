@@ -1,0 +1,148 @@
+---
+title: "Red Knot Altitude methodology conversion"
+author: "G. Perkins & C. Lacelle"
+format: docx
+editor: visual
+---
+
+March, 2025
+
+### 1. Project Aim:
+
+The project is to streamline the methodology to quantify and analyse the movement of Red Knots using GPS data and external modelled data sources. We converted the original manual process into a scripted, repeatable and transparent workflow to increase efficiency and enable rigorous methods. The original methods were developed by Stephanie Feigin and Theo Diehl.
+
+Scripting code can be found here: [**https://github.com/ninoxconsulting/REKN_altitude**](https://github.com/ninoxconsulting/REKN_altitude)
+
+### 2. Workflow:
+
+1)  Load R Packages
+
+RStudio is open-source software for R language coding and scripting. It offers a variety of installable "packages" that add new functions and tools. For the Red Knot Altitude project, several R packages are used to replicate the manual methodology, including GIS-related packages for converting CSV data to spatial formats and for reading and extracting GIS raster datasets, such as a geoid model.
+
+2)  Data Pre-Processing
+
+Before calculations begin, several data preprocessing steps are required. First, the CSV dataset is read and converted into an 'sf object'—a data frame capable of storing spatial data—using latitude and longitude values to define its geometry. The coordinate system is set to the World Geodetic System (EPSG 4326), consistent with GPS-derived points.
+
+Next, a filter is applied to remove records where the CRC field is marked 'Fail.' Throughout the process, the original data remains unchanged, as all modifications are stored in new variables within the R session. The Date and Time fields are then merged into a single 'datetime' field, followed by sorting the data in ascending order by datetime. This step ensures scalability for datasets that may not already be ordered.
+
+Finally, two new columns are added to the sf object: one storing the previous row's latitude and the other the previous row's longitude, facilitating later bearing calculations. We also define locations X/Y into a category of onshore, offshore (\>300m of coastline) and nearshore (within 300m coastline). This is based on the distance from the nearest coastline as defined by global country outline. Note there is some degree of uncertainty regarding coastline accuracy.
+
+3)  Distance Calculations
+
+With the dataset loaded, converted to a spatial format, cleaned, and sorted, we can begin the first stage of the methodology. A function is run to calculate the distance between every ping in the dataset, resulting in a large matrix of distance values (in metres) between all pings. Since we are interested only in the distance between each ping and its immediately previous ping, additional code extracts these specific values from the matrix. A loop iterates through each row in the dataset, applying an if-else condition: the first ping, having no previous record, is assigned a distance of zero, while all subsequent pings retrieve the distance from the previous location. The loop completes at the final entry, producing a set of distance values equal in number to the dataset's filtered rows.
+
+4)  Time Difference Calculations
+
+The difftime function is used to calculate the time difference (in hours) between each ping and its preceding ping. To achieve this in a single line of code, the lag function is applied within difftime, referencing the birds_sf variable to obtain the previous datetime value.
+
+5)  Bearing and Speed Calculations This section calculates both the bearing between consecutive pings and the average speed of travel. Speed is computed by dividing the distance (in kilometres) by the time difference (in hours), with results rounded to one decimal place. Bearing is calculated using a function that takes the previous and current latitude and longitude values, measured clockwise from north (0°).
+
+6)  Geoid Height Calculations
+
+To calculate geoid height, we download the appropriate geoid height model as a raster dataset. We used the same model as was used in the geoid calculator provided in the original methodology: the Earth Gravitational Model 2008 or EGM2008. The raster was downloaded from https://www.agisoft.com/downloads/geoids/.
+
+We read the EGM2008 geoid model into the R script as another variable using the SpatRaster R package. It was important to check the coordinate reference systems (CRS) of both the birds_sf variable and the EGM2008 to see if they were the same or if a reprojection was needed to ensure accurate results. The birds_sf data was in EPSG:4326 or the World Geodetic System 1984 (WGS84) ellipsoidal 2D coordinate system. The geoid model EGM2008 was in EPSG:4979 also in the WGS84 datum but in an ellipsoidal 3D coordinate system. We used a reproject function in R to reproject the birds_sf variable to the same CRS as the geoid model to mitigate any potential errors that could arise from performing geoid height calculations in different coordinate systems. The reprojected data was saved as a new variable in the R code so the birds_sf data remained in its native CRS.
+
+After the reprojection was complete, a zonal statistics (extract in R) function was used on the geoid model and the reprojected birds data to extract the geoid height at each of the ping locations. Once the geoid height values were acquired in R, we used the online geoid calculator on the same birds dataset in order to validate and verify our results. The R calculations for geoid height matched the results found using the online calculator. The geoid height values were added to the birds_sf variable as a new field along with the distance, time difference, bearing, and speed attributes from the previous stages of the project. In addition to geoid height, we also ran an orthometric height calculation using the formula N = h - H where N is the geoid height, h is the ellipsoid height, and H is the orthometric height. Since we already had our geoid and ellipsoid height values, we added these together to get the orthometric height. With the orthometric height calculated, we now had geoid height, ellipsoid height, and orthometric height for every ping location.
+
+Note: according to information and formulas found online regarding geoid, ellipsoid, and orthometric heights, it appears as though orthometric height is considered to be the “true” height above mean sea level. It is recommended that the orthometric height is used in the wind calculations for the next steps rather than geoid height.
+
+8)  Wind Extractions
+
+As wind data has four collection intervals per day (0, 6, 12, 18 grid), we need to convert our datetime field in the bird data to these intervals so we can use them as a filter to download the appropriate wind data for each ping in the dataset. A function is run in R to assign a time category based on the hour of the ping, based on the closest time interval the bird ping is in since not every ping will have been captured at the same exact time as the wind data.
+
+We apply the time interval assignment for the 0, 6, 12, and 18 grid which is called the timeclass column. After that we assign the timeclass a value of 1 to 4 based on the grid values, named the windclass column. A winddate column is also added that matches the format of the dates assigned to the wind data, to be used in the download and later in the extraction.
+
+In order to avoid redundancy in the wind data download, we assign a variable with all of the unique dates in the bird dataset. Next, we run a function to check if we have a “downloads” folder designated for the wind data to be downloaded to, specific to the project. It is in a similar format to our “01 inputs” and “02 outputs” folders. If the folder does not already exist, R creates this “00 downloads” folder for us in our workspace.
+
+Finally, after this data preparation we run a loop function using the purrr R package which will iterate through all of the unique dates we provided without needing to write a traditional for loop in R. This loop will check if a particular wind dataset for our unique date already exists, and if it does it will give us the message “File already exists.” and will not download a duplicate of that particular dataset. Otherwise it will use the download.file() function in R to download the wind data directly using the URL which will dynamically change to fit the particular date we are looking for to match the bird data pings. The download may take several minutes to complete, depending on the number of unique dates in the dataset. Once the wind data finishes downloading, we can move onto the wind calculations for the bird data.
+
+Note: there appears to be a potential 60 minute timeout in R for the download.file() function, which is related to a global setting in the R session. This means that if it is taking R longer than 60 seconds to download one of the files, it will terminate the loop at whatever iteration it was currently at, and throw an error saying 60 second timeout. If this occurs, the user may re-run this bit of code and it will resume where it left off (stating the first X files have already been downloaded and placed in the “00 downloads” folder). However, the last file that the script failed at did not download properly and must be removed and re-downloaded to work properly with the later sections of code. It is recommended to possibly increase the timeout setting in R using the following function: options(timeout = X); where X is the number of seconds to timeout.
+
+9)  Wind Calculations
+
+Once all of the wind datasets have been downloaded for each unique date in the bird dataset, we must cycle through each wind dataset and run an intersect on the wind raster with the appropriate bird ping and then cycle through the time period. A variable is created to list each file in the “00 downloads” folder which contains all of the wind datasets that are relevant. Then within the loop (once again, using purrr) we create a temporary variable for each iteration that captures the full file name, including the path, for each wind dataset as well as the corresponding date.
+
+The wind dataset is read into the R session as a SpatRaster using the terra package and then rotated to convert -180 to 180. Next a subset of the bird data is pulled from the dataset where the dates of the bird data and wind data match up. Much like with the geoid methods, a zonal statistics function (extract in R) is run on the wind data raster to get the raster cell value at the ping location. Every value for each wind sub-dataset is extracted for the east-west (zonal) wind and the north-south (meridional) wind for all four time intervals.
+
+Now that the wind data has been extracted for each ping, we need to subset these wind values to capture only the values for the appropriate time interval that corresponds to the time of the bird’s ping. This is done using the windclass column we created for the bird data prior to the wind data download and extraction. This section loops through the bird pings and extracts the appropriate exact wind value for both the zonal and meridional wind values that correspond to the windclass of the bird’s ping time. We then clean up the wind data columns that are not needed, and then re-join these back to the bird data variable itself.
+
+The wind angle is then calculated using the two wind values for each ping in the equation (180 / 3.14) \* atan2 (uwnd, vwnd) afterwhich the bird dataset with all of the appropriate wind data and wind angle is exported to the outputs folder.
+
+## 3) Outputs
+
+The output file is a csv and a geopackage which contains the following columns
+
+-   id = unique id value for each event
+
+-   bid = the serial number for the tag
+
+-   bproj = the project number (argos) in which the tag is associated.
+
+-   datetime = timestamp of the recorded location
+
+-   shore_status = location of the bird (onshore, nearshore, offshore)
+
+-   tag.model = the model type of the recorded tags
+
+-   fix = quality of data
+
+-   Alt.m. = altitude in meters - based on GPS
+
+-   bearing = direction of travel calculated between points using geosphere (-180 to 180)
+
+-   speed_kmh = speed in km/h calculated between points
+
+-   geoid_height = height above the geoid (sea level) in meters
+
+-   ortho_height = height above the ellipsoid in meters
+
+-   ortho_height_cat = height above ellipsoid grouped by catergory: "0 - 50", "50 - 100", "100 - 250", "250 - 500", "500 - 1000", "1000 - 2000", "\>2000"
+
+-   ws = wind speed in m/s using the modelled CCMP data
+
+-   windangle = wind direction in degrees using the modelled CCMP data (-180 to 180)
+
+-   windangle_azmith"
+
+## Appendices
+
+Data summary of the tags analysed, duration and number of records.
+
+```{r, warning=FALSE, error=FALSE, message=FALSE, echo = FALSE}
+library(readr)
+library(fs)
+library(dplyr)
+library(sf)
+
+bb <- read_csv(path("02_outputs", "birds_final_proc","birdwind_final.csv"))
+
+# summary with the bird list 
+blist_all <- read.csv(path("02_outputs","reference_data_edited.csv")) |> 
+  select(tag.id,tag.model) |> 
+  mutate(tag.id = tag.id)
+
+bb <- left_join(bb, blist_all, by = c("bid" = "tag.id")) # join the data with the bird list
+
+bb_type <- bb |> 
+  group_by(bid) |>
+  summarise(
+    n = n(),
+    start = min(datetime),
+    end = max(datetime),
+    duration = round(as.numeric(difftime(end, start, units = "days")),0),
+    .groups = "drop" 
+  )#|> 
+ # st_drop_geometry()
+
+bb_type <- bb_type |> 
+  left_join(blist_all, by = c("bid" = "tag.id"))
+
+
+```
+
+```{r, echo = FALSE}
+kableExtra::kable(bb_type, format = "simple",)
+#{tbl-colwidths="[25,25, 40, 40, 10, 25]"}
+
+```
