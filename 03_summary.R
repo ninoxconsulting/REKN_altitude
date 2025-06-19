@@ -123,6 +123,8 @@ st_write(bb, path("02_outputs", "birds_final_proc","birdwind_final.gpkg"), row.n
 ####################################################################################
 # Summary plots - general all birds
 
+bb <- st_read( path("02_outputs", "birds_final_proc","birdwind_final.gpkg"))
+
 bbs <- bb |> 
   group_by(bid) |>
   st_drop_geometry() |>
@@ -349,7 +351,6 @@ birdmapall <- leaflet(bi) |>
   addProviderTiles("CartoDB", group = "Background") |> 
   addPolylines(data =bi, lng = bi$X, lat = bi$Y,
                color = "grey",   opacity = 0.1, stroke = TRUE, group = "Bird trajectory") |> 
-  
   addCircleMarkers(lng = bi$X, lat = bi$Y,
                    weight = 4,
                    color = ~pal(bi$ortho_height_cat),
@@ -384,8 +385,8 @@ birdmapall <- leaflet(bi) |>
     ,
     overlayGroups = c("Bird Altitude", "Bird trajectory", "Wind speed and direction"),
     options = layersControlOptions(collapsed = FALSE)
-  ) |> 
-  addControl(title, position = "topleft", className="map-title")
+  )#|> 
+ # addControl(title, position = "topleft", className="map-title")
 
 
 birdmapall
